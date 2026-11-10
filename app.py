@@ -1,3 +1,5 @@
+import tkinter as tk
+from tkinter import filedialog
 import sqlite3
 import pandas as pd
 import tempfile
@@ -5,28 +7,30 @@ import os
 import streamlit as st
 
 st.title("Kobo Reading Analytics")
-uploaded_file = st.file_uploader("Upload your KoboReader.sqlite file", type=["sqlite", "sqlite3", "db", ""])
+import os
 
-if uploaded_file is not None:
-    # Save the uploaded file temporarily so SQLite can read it from the local path
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".sqlite") as tmp_file:
-        tmp_file.write(uploaded_file.getvalue())
-        temp_path = tmp_file.name
+# Initialize session state to remember the path
+if "folder_path" not in st.session_state:
+    st.session_state.folder_path = ""
 
-    # Connect to the temporary database copy
-    conn = sqlite3.connect(temp_path)
+# Create the browse button
+if st.button("Browse for .kobo folder"):
+    # Set up a hidden tkinter window
+    root = tk.Tk()
+    root.withdraw()
+    root.wm_attributes('-topmost', 1) # Force the dialog to appear above the browser
     
-    try:
-        # Load the raw event logs into a Pandas DataFrame
-        df = pd.read_sql_query("SELECT * FROM Event", conn)
-        st.success("Database connected successfully!")
-        
-        st.subheader("Raw Data Preview")
-        st.dataframe(df.head(15))
-        
-    except Exception as e:
-        st.error(f"Error reading the database: {e}")
-    finally:
-        # Close connection and clean up the temp file
-        conn.close()
-        os.remove(temp_path)
+    # Open the folder picker
+    selected_folder = filedialog.askdirectory(master=root, title="Select your .kobo folder")
+    
+    if selected_folder:
+        st.session_state.folder_path = selected_folder
+
+# Use the path if one has been selected
+if st.session_state.folder_path:
+    folder_path = st.session_state.folder_path
+    st.write(f"**Selected folder:** {folder_path}")
+    
+    # Construct the expected path to the database
+    db_path = os.path.join(folder_path, "KoboReader.sqlite")
+
