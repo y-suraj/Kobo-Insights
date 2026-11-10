@@ -46,8 +46,26 @@ if st.session_state.folder_path:
                 df = pd.read_sql_query("SELECT * FROM Event", conn)
                 st.success(f"Successfully connected to database!")
                 
-                st.subheader("Raw Data Preview")
-                st.dataframe(df.head(15))
+                st.subheader("Book Summary")
+                
+                # 1. Clean the ContentID to extract readable book titles
+                # This splits the file path, takes the last part, and removes URL formatting/extensions
+                df['Book Title'] = df['ContentID'].apply(
+                    lambda x: str(x).split('/')[-1].replace('%20', ' ').replace('.kepub.epub', '').replace('.epub', '') if pd.notnull(x) else 'Unknown'
+                )
+                
+                # 2. Remove system events (keep only rows attached to an actual book)
+                books_df = df[df['Book Title'] != 'Unknown']
+                
+                # 3. Group the data by book to calculate basic metrics
+                book_summary = books_df.groupby('Book Title').agg(
+                    Total_Interactions=('EventCount', 'sum'),
+                    First_Opened=('FirstOccurrence', 'min'),
+                    Last_Read=('LastOccurrence', 'max')
+                ).reset_index()
+                
+                # 4. Display the clean summary table across the full width of the app
+                st.dataframe(book_summary, use_container_width=True)
                 
             except Exception as e:
                 st.error(f"Error reading the database: {e}")
