@@ -1,3 +1,4 @@
+import plotly.express as px
 import tkinter as tk
 from tkinter import filedialog
 import sqlite3
@@ -64,28 +65,60 @@ if st.session_state.folder_path:
                     Last_Read=('LastOccurrence', 'max')
                 ).reset_index()
                 
-                # 4. Display the clean summary table across the full width of the app
-                st.dataframe(book_summary, use_container_width=True)
+                # --- VISUAL DASHBOARD ---
+                
+                # Sort books by interactions to find your most read books
+                top_books = book_summary.sort_values(by='Total_Interactions', ascending=False).head(10)
+                
                 st.divider()
-                st.subheader("Deep Dive: Reading Telemetry")
+                st.subheader("Reading Analytics Dashboard")
                 
-                # 5. Dropdown to select a specific book
-                selected_book = st.selectbox("Select a book to analyze:", book_summary['Book Title'])
+                # Create a two-column layout for the charts
+                col1, col2 = st.columns(2)
                 
-                # 6. Filter events for this book
-                single_book_events = books_df[books_df['Book Title'] == selected_book]
+                with col1:
+                    st.markdown("**Top 10 Books by Total Interactions**")
+                    # Create a horizontal bar chart
+                    fig_bar = px.bar(
+                        top_books, 
+                        x='Total_Interactions', 
+                        y='Book Title', 
+                        orientation='h',
+                        color='Total_Interactions',
+                        color_continuous_scale='Viridis'
+                    )
+                    fig_bar.update_layout(yaxis={'categoryorder':'total ascending'}, showlegend=False)
+                    st.plotly_chart(fig_bar, use_container_width=True)
                 
-                # 7. Show only the rows that actually contain telemetry data
-                # We filter out empty or null ExtraData to find where the reading stats live
-                metrics_data = single_book_events[single_book_events['ExtraData'].notna() & (single_book_events['ExtraData'] != '')]
+                with col2:
+                    st.markdown("**Interaction Share (Top 10)**")
+                    # Create a donut chart
+                    fig_pie = px.pie(
+                        top_books, 
+                        values='Total_Interactions', 
+                        names='Book Title',
+                        hole=0.4,
+                        color_discrete_sequence=px.colors.sequential.Viridis
+                    )
+                    fig_pie.update_traces(textposition='inside', textinfo='percent')
+                    st.plotly_chart(fig_pie, use_container_width=True)
+                    
+                st.divider()
                 
-                st.write(f"Raw telemetry logs for **{selected_book}**:")
-                
-                # We will display EventType to identify the reading event, and ExtraData for the JSON stats
-                if not metrics_data.empty:
-                    st.dataframe(metrics_data[['EventType', 'EventCount', 'ExtraData']].head(15), use_container_width=True)
-                else:
-                    st.info("No extra telemetry data found for this specific document.")
+                # Timeline Scatter Plot across the full width at the bottom
+                st.markdown("**Reading Activity Timeline (When books were first opened)**")
+                timeline_data = book_summary.dropna(subset=['First_Opened'])
+                fig_timeline = px.scatter(
+                    timeline_data, 
+                    x='First_Opened', 
+                    y='Book Title',
+                    size='Total_Interactions',
+                    color='Total_Interactions',
+                    color_continuous_scale='Viridis',
+                    hover_name='Book Title'
+                )
+                fig_timeline.update_layout(yaxis={'visible': False, 'showticklabels': False})
+                st.plotly_chart(fig_timeline, use_container_width=True)
             except Exception as e:
                 st.error(f"Error reading the database: {e}")
             finally:
