@@ -121,12 +121,6 @@ if st.session_state.folder_path:
                     
                     # Remove the overlapping axis title
                     fig_bar.update_layout(yaxis={'categoryorder':'total ascending', 'title': None}, showlegend=False)
-                    st.plotly_chart(fig_bar, use_container_width=True) 
-                        orientation='h',
-                        color='Total_Interactions',
-                        color_continuous_scale='Viridis'
-                    )
-                    fig_bar.update_layout(yaxis={'categoryorder':'total ascending'}, showlegend=False)
                     st.plotly_chart(fig_bar, use_container_width=True)
                 
                 with col2:
