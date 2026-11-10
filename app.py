@@ -34,3 +34,24 @@ if st.session_state.folder_path:
     # Construct the expected path to the database
     db_path = os.path.join(folder_path, "KoboReader.sqlite")
 
+    if os.path.exists(db_path):
+            # Connect directly to the local file
+            conn = sqlite3.connect(db_path)
+            
+            # Tell SQLite to ignore malformed UTF-8 bytes in the Kobo database
+            conn.text_factory = lambda b: b.decode(errors='ignore') 
+            
+            try:
+                # Load the raw event logs
+                df = pd.read_sql_query("SELECT * FROM Event", conn)
+                st.success(f"Successfully connected to database!")
+                
+                st.subheader("Raw Data Preview")
+                st.dataframe(df.head(15))
+                
+            except Exception as e:
+                st.error(f"Error reading the database: {e}")
+            finally:
+                conn.close()
+    else:
+        st.warning(f"Could not find 'KoboReader.sqlite' inside {folder_path}. Please check the path.")
