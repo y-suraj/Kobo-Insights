@@ -167,9 +167,6 @@ if st.session_state.folder_path:
                 # Timeline Scatter Plot across the full width at the bottom
                 st.markdown("**Reading Activity Timeline (When books were first opened)**")
                 timeline_data = book_summary.dropna(subset=['First_Opened'])
-                # Timeline Scatter Plot across the full width at the bottom
-                st.markdown("**Reading Activity Timeline (When books were first opened)**")
-                timeline_data = book_summary.dropna(subset=['First_Opened'])
                 
                 fig_timeline = px.scatter(
                     timeline_data, 
