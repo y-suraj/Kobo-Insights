@@ -72,7 +72,27 @@ if st.session_state.folder_path:
                 # Load the raw event logs
                 df = pd.read_sql_query("SELECT * FROM Event", conn)
                 st.success(f"Successfully connected to database!")
+                # --- LIFETIME KPI CARDS ---
+                # Load the 'content' table which stores actual reading time and progress
+                # ContentType 6 generally isolates actual books rather than chapters/dictionaries
+                content_df = pd.read_sql_query(
+                    "SELECT Title, ___PercentRead, TimeSpentReading, ReadStatus FROM content WHERE ContentType = 6 AND Title IS NOT NULL", 
+                    conn
+                )
                 
+                # Calculate metrics (TimeSpentReading is logged in seconds)
+                books_started = len(content_df[content_df['___PercentRead'] > 0])
+                books_finished = len(content_df[content_df['ReadStatus'] == 2]) # Status 2 = Finished
+                total_hours = content_df['TimeSpentReading'].sum() / 3600
+                
+                st.subheader("Lifetime Reading Snapshot")
+                kpi1, kpi2, kpi3 = st.columns(3)
+                
+                kpi1.metric(label="Books Started", value=books_started)
+                kpi2.metric(label="Books Finished", value=books_finished)
+                kpi3.metric(label="Total Hours Read", value=f"{total_hours:.1f} hrs")
+                
+                st.divider()
                 st.subheader("Book Summary")
                 
                 # 1. Clean the ContentID to extract readable book titles
