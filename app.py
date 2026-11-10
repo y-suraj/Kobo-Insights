@@ -136,13 +136,19 @@ if st.session_state.folder_path:
                         orientation='h',
                         color='Total_Interactions',
                         color_continuous_scale='Viridis',
-                        hover_name='Book Title' # Show full title when hovering
+                        hover_name='Book Title',
+                        # FIX: Clean up the names used in the UI
+                        labels={'Total_Interactions': 'Total Interactions', 'Short Title': ''} 
                     )
                     
-                    # Remove the overlapping axis title
-                    fig_bar.update_layout(yaxis={'categoryorder':'total ascending', 'title': None}, showlegend=False)
+                    # FIX: Remove overlapping Y-axis title, fix X-axis, and rename the colorbar
+                    fig_bar.update_layout(
+                        yaxis={'categoryorder':'total ascending', 'title': None}, 
+                        xaxis={'title': 'Total Interactions'},
+                        coloraxis_colorbar={'title': 'Interactions'},
+                        showlegend=False
+                    )
                     st.plotly_chart(fig_bar, use_container_width=True)
-                
                 with col2:
                     st.markdown("**Interaction Share (Top 10)**")
                     # Create a donut chart
@@ -161,6 +167,10 @@ if st.session_state.folder_path:
                 # Timeline Scatter Plot across the full width at the bottom
                 st.markdown("**Reading Activity Timeline (When books were first opened)**")
                 timeline_data = book_summary.dropna(subset=['First_Opened'])
+                # Timeline Scatter Plot across the full width at the bottom
+                st.markdown("**Reading Activity Timeline (When books were first opened)**")
+                timeline_data = book_summary.dropna(subset=['First_Opened'])
+                
                 fig_timeline = px.scatter(
                     timeline_data, 
                     x='First_Opened', 
@@ -168,10 +178,29 @@ if st.session_state.folder_path:
                     size='Total_Interactions',
                     color='Total_Interactions',
                     color_continuous_scale='Viridis',
-                    hover_name='Book Title'
+                    hover_name='Book Title',
+                    # FIX: Map variable names to clean UI labels
+                    labels={
+                        'First_Opened': 'Started On',
+                        'Total_Interactions': 'Total Interactions',
+                        'Book Title': 'Book'
+                    }
                 )
-                fig_timeline.update_layout(yaxis={'visible': False, 'showticklabels': False})
+                
+                # FIX: Clean up the axes and colorbar
+                fig_timeline.update_layout(
+                    yaxis={'visible': False, 'showticklabels': False},
+                    xaxis={'title': 'Date First Opened'},
+                    coloraxis_colorbar={'title': 'Interactions'}
+                )
+                
+                # FIX: Build a custom, clean hover tooltip without repetitive text
+                fig_timeline.update_traces(
+                    hovertemplate="<b>%{hovertext}</b><br><br>Started On: %{x}<br>Interactions: %{marker.size}<extra></extra>"
+                )
+                
                 st.plotly_chart(fig_timeline, use_container_width=True)
+
             except Exception as e:
                 st.error(f"Error reading the database: {e}")
             finally:
