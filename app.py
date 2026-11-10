@@ -5,27 +5,53 @@ import sqlite3
 import pandas as pd
 import tempfile
 import os
+import json
 import streamlit as st
 
 st.title("Kobo Reading Analytics")
 import os
 
-# Initialize session state to remember the path
-if "folder_path" not in st.session_state:
-    st.session_state.folder_path = ""
+HISTORY_FILE = "path_history.json"
 
-# Create the browse button
-if st.button("Browse for .kobo folder"):
-    # Set up a hidden tkinter window
-    root = tk.Tk()
-    root.withdraw()
-    root.wm_attributes('-topmost', 1) # Force the dialog to appear above the browser
-    
-    # Open the folder picker
-    selected_folder = filedialog.askdirectory(master=root, title="Select your .kobo folder")
-    
-    if selected_folder:
-        st.session_state.folder_path = selected_folder
+# Load recent paths from local file
+if os.path.exists(HISTORY_FILE):
+    with open(HISTORY_FILE, "r") as f:
+        recent_paths = json.load(f)
+else:
+    recent_paths = []
+
+if "folder_path" not in st.session_state:
+    st.session_state.folder_path = recent_paths[0] if recent_paths else ""
+
+# UI for selecting paths
+col_a, col_b = st.columns([3, 1])
+
+with col_a:
+    # Dropdown to select from memory
+    selected_recent = st.selectbox("Recent Kobo folders:", [""] + recent_paths, index=0)
+    if selected_recent:
+        st.session_state.folder_path = selected_recent
+
+with col_b:
+    st.write("") # Spacing to align button with dropdown
+    st.write("")
+    if st.button("Browse new folder"):
+        root = tk.Tk()
+        root.withdraw()
+        root.wm_attributes('-topmost', 1)
+        new_folder = filedialog.askdirectory(master=root, title="Select your .kobo folder")
+        
+        if new_folder:
+            st.session_state.folder_path = new_folder
+            # Save to history, keeping only the 5 most recent
+            if new_folder in recent_paths:
+                recent_paths.remove(new_folder)
+            recent_paths.insert(0, new_folder)
+            recent_paths = recent_paths[:5]
+            
+            with open(HISTORY_FILE, "w") as f:
+                json.dump(recent_paths, f)
+            st.rerun()
 
 # Use the path if one has been selected
 if st.session_state.folder_path:
@@ -78,11 +104,24 @@ if st.session_state.folder_path:
                 
                 with col1:
                     st.markdown("**Top 10 Books by Total Interactions**")
-                    # Create a horizontal bar chart
+                    
+                    # Truncate long titles for a cleaner UI
+                    top_books['Short Title'] = top_books['Book Title'].apply(lambda x: (x[:35] + '...') if len(x) > 35 else x)
+                    
+                    # Create a horizontal bar chart using the Short Title
                     fig_bar = px.bar(
                         top_books, 
                         x='Total_Interactions', 
-                        y='Book Title', 
+                        y='Short Title', 
+                        orientation='h',
+                        color='Total_Interactions',
+                        color_continuous_scale='Viridis',
+                        hover_name='Book Title' # Show full title when hovering
+                    )
+                    
+                    # Remove the overlapping axis title
+                    fig_bar.update_layout(yaxis={'categoryorder':'total ascending', 'title': None}, showlegend=False)
+                    st.plotly_chart(fig_bar, use_container_width=True) 
                         orientation='h',
                         color='Total_Interactions',
                         color_continuous_scale='Viridis'
