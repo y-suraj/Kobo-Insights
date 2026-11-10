@@ -66,7 +66,26 @@ if st.session_state.folder_path:
                 
                 # 4. Display the clean summary table across the full width of the app
                 st.dataframe(book_summary, use_container_width=True)
+                st.divider()
+                st.subheader("Deep Dive: Reading Telemetry")
                 
+                # 5. Dropdown to select a specific book
+                selected_book = st.selectbox("Select a book to analyze:", book_summary['Book Title'])
+                
+                # 6. Filter events for this book
+                single_book_events = books_df[books_df['Book Title'] == selected_book]
+                
+                # 7. Show only the rows that actually contain telemetry data
+                # We filter out empty or null ExtraData to find where the reading stats live
+                metrics_data = single_book_events[single_book_events['ExtraData'].notna() & (single_book_events['ExtraData'] != '')]
+                
+                st.write(f"Raw telemetry logs for **{selected_book}**:")
+                
+                # We will display EventType to identify the reading event, and ExtraData for the JSON stats
+                if not metrics_data.empty:
+                    st.dataframe(metrics_data[['EventType', 'EventCount', 'ExtraData']].head(15), use_container_width=True)
+                else:
+                    st.info("No extra telemetry data found for this specific document.")
             except Exception as e:
                 st.error(f"Error reading the database: {e}")
             finally:
