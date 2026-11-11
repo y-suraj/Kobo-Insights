@@ -197,7 +197,37 @@ if st.session_state.folder_path:
                 )
                 
                 st.plotly_chart(fig_timeline, use_container_width=True)
-
+                # --- TIME SPENT ANALYTICS ---
+                st.divider()
+                st.subheader("Time Spent Reading")
+                
+                # Convert the raw seconds into hours and filter out unread books
+                content_df['Hours Read'] = content_df['TimeSpentReading'] / 3600
+                top_time_books = content_df[content_df['Hours Read'] > 0].sort_values(by='Hours Read', ascending=False).head(10)
+                
+                # Apply the same 25-character UI truncation to the official book titles
+                top_time_books['Short Title'] = top_time_books['Title'].apply(lambda x: (str(x)[:25] + '...') if len(str(x)) > 25 else str(x))
+                
+                # Create a horizontal bar chart with a distinct color scale (Inferno)
+                fig_time = px.bar(
+                    top_time_books, 
+                    x='Hours Read', 
+                    y='Short Title', 
+                    orientation='h',
+                    color='Hours Read',
+                    color_continuous_scale='Inferno',
+                    hover_name='Title',
+                    labels={'Hours Read': 'Total Hours', 'Short Title': ''} 
+                )
+                
+                fig_time.update_layout(
+                    yaxis={'categoryorder':'total ascending', 'showticklabels': True, 'title': None}, 
+                    xaxis={'title': 'Hours Read'},
+                    coloraxis_colorbar={'title': 'Hours'},
+                    showlegend=False
+                )
+                
+                st.plotly_chart(fig_time, use_container_width=True)
             except Exception as e:
                 st.error(f"Error reading the database: {e}")
             finally:
