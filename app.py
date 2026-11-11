@@ -144,28 +144,38 @@ if st.session_state.folder_path:
                 
                 st.write("") # Spacing
                 
-                # 3. Generate the Fire Emoji Calendar for the most recent active month
-                st.markdown(f"**Activity for {latest_date.strftime('%B %Y')}**")
-                cal = calendar.Calendar(firstweekday=0) # Monday start
-                month_cal = cal.monthdatescalendar(latest_date.year, latest_date.month)
-                
-                # Build a Markdown table row by row
-                md = "| Mon | Tue | Wed | Thu | Fri | Sat | Sun |\n|---|---|---|---|---|---|---|\n"
-                for week in month_cal:
-                    row = "|"
-                    for day in week:
-                        if day.month == latest_date.month:
-                            if day in active_days:
-                                # Highlight reading days with the requested fire emoji
-                                row += f" **{day.day}** 🔥 |"
+                # 3. Generate the Fire Emoji Calendar with a Month Selector
+                if active_days:
+                    # Extract all unique months from your activity history, sorted newest to oldest
+                    unique_months = sorted(list(set([(d.year, d.month) for d in active_days])), reverse=True)
+                    month_options = [datetime.date(y, m, 1).strftime('%B %Y') for y, m in unique_months]
+                    
+                    # Create a dropdown to select the month
+                    selected_month_str = st.selectbox("Select Activity Month:", month_options, index=0)
+                    selected_date = datetime.datetime.strptime(selected_month_str, '%B %Y').date()
+                    
+                    cal = calendar.Calendar(firstweekday=0) # Monday start
+                    month_cal = cal.monthdatescalendar(selected_date.year, selected_date.month)
+                    
+                    # Build a Markdown table row by row
+                    md = "| Mon | Tue | Wed | Thu | Fri | Sat | Sun |\n|---|---|---|---|---|---|---|\n"
+                    for week in month_cal:
+                        row = "|"
+                        for day in week:
+                            if day.month == selected_date.month:
+                                if day in active_days:
+                                    # Highlight reading days with the requested fire emoji
+                                    row += f" **{day.day}** 🔥 |"
+                                else:
+                                    row += f" {day.day} |"
                             else:
-                                row += f" {day.day} |"
-                        else:
-                            row += " |" # Empty cell for days outside the current month
-                    md += row + "\n"
-                
-                # Render the markdown table in the UI
-                st.markdown(md)
+                                row += " |" # Empty cell for days outside the current month
+                        md += row + "\n"
+                    
+                    # Render the markdown table in the UI
+                    st.markdown(md)
+                else:
+                    st.info("No reading activity found to generate a calendar.")
                 st.divider()
                 st.subheader("Book Summary")
                 
