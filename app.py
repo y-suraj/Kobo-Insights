@@ -125,10 +125,10 @@ if st.session_state.folder_path:
                 with col1:
                     st.markdown("**Top 10 Books by Total Interactions**")
                     
-                    # Truncate long titles for a cleaner UI
-                    top_books['Short Title'] = top_books['Book Title'].apply(lambda x: (x[:35] + '...') if len(x) > 35 else x)
+                    # Stricter 25-character truncation so it fits perfectly in the column layout
+                    top_books['Short Title'] = top_books['Book Title'].apply(lambda x: (x[:25] + '...') if len(x) > 25 else x)
                     
-                    # Create a horizontal bar chart using the Short Title
+                    # Create the horizontal bar chart using standard outside labels
                     fig_bar = px.bar(
                         top_books, 
                         x='Total_Interactions', 
@@ -136,18 +136,18 @@ if st.session_state.folder_path:
                         orientation='h',
                         color='Total_Interactions',
                         color_continuous_scale='Viridis',
-                        hover_name='Book Title',
-                        # FIX: Clean up the names used in the UI
+                        hover_name='Book Title', # Full name still appears cleanly on hover
                         labels={'Total_Interactions': 'Total Interactions', 'Short Title': ''} 
                     )
                     
-                    # FIX: Remove overlapping Y-axis title, fix X-axis, and rename the colorbar
+                    # Restore clean Y-axis labels and let Plotly auto-manage the fit
                     fig_bar.update_layout(
-                        yaxis={'categoryorder':'total ascending', 'title': None}, 
+                        yaxis={'categoryorder':'total ascending', 'showticklabels': True, 'title': None}, 
                         xaxis={'title': 'Total Interactions'},
                         coloraxis_colorbar={'title': 'Interactions'},
                         showlegend=False
                     )
+                    
                     st.plotly_chart(fig_bar, use_container_width=True)
                 with col2:
                     st.markdown("**Interaction Share (Top 10)**")
