@@ -93,9 +93,22 @@ if st.session_state.folder_path:
                 kpi1.metric(label="Books Started", value=books_started)
                 kpi2.metric(label="Books Finished", value=books_finished)
                 kpi3.metric(label="Total Hours Read", value=f"{total_hours:.1f} hrs")
-                # --- READING STREAKS & CALENDAR ---
+                
                 st.divider()
-                st.subheader("Reading Streaks & Calendar")
+                
+                # --- NEW: CURRENTLY READING PROGRESS BARS ---
+                st.subheader("Currently Reading")
+                
+                # Filter for active books (progress between 1% and 99%)
+                active_books = content_df[(content_df['___PercentRead'] > 0) & (content_df['___PercentRead'] < 100)].sort_values(by='TimeSpentReading', ascending=False)
+                
+                if not active_books.empty:
+                    for _, row in active_books.head(5).iterrows(): # Show top 5 active books
+                        pct = min(int(row['___PercentRead']), 100) # Cap at 100 for the UI
+                        st.write(f"**{row['Title']}** - {pct}%")
+                        st.progress(pct)
+                else:
+                    st.info("No books currently in progress.")
                 
                 # 1. Sweep the database for every available timestamp to reconstruct active days
                 try:
@@ -339,6 +352,52 @@ if st.session_state.folder_path:
                 )
                 
                 st.plotly_chart(fig_time, use_container_width=True)
+                # --- NEW: TIME OF DAY ANALYSIS ---
+                st.divider()
+                st.subheader("When Do You Read?")
+                
+                # Extract the hour from the FirstOccurrence timestamp
+                books_df['Hour'] = pd.to_datetime(books_df['FirstOccurrence']).dt.hour
+                hour_counts = books_df['Hour'].value_counts().reset_index()
+                hour_counts.columns = ['Hour', 'Interactions']
+                hour_counts = hour_counts.sort_values(by='Hour')
+                
+                # Format 24h time to 12h AM/PM for the UI
+                hour_counts['Time'] = hour_counts['Hour'].apply(lambda x: datetime.time(int(x)).strftime('%I %p') if pd.notnull(x) else "Unknown")
+                
+                # Create a bar chart with a 'Sunset' color gradient
+                fig_hours = px.bar(
+                    hour_counts, 
+                    x='Time', 
+                    y='Interactions',
+                    color='Interactions',
+                    color_continuous_scale='Sunset',
+                    labels={'Time': 'Time of Day'}
+                )
+                fig_hours.update_layout(xaxis={'title': None}, yaxis={'title': 'Activity Level'}, showlegend=False)
+                st.plotly_chart(fig_hours, use_container_width=True)
+            # --- NEW: SINGLE BOOK DEEP DIVE ---
+                st.divider()
+                st.subheader("Deep Dive: Single Book Analysis")
+                
+                # Dropdown to isolate a specific title
+                selected_deep_dive = st.selectbox("Select a specific book to analyze:", [""] + sorted(books_df['Book Title'].unique().tolist()))
+                
+                if selected_deep_dive:
+                    deep_dive_df = books_df[books_df['Book Title'] == selected_deep_dive]
+                    
+                    dd_col1, dd_col2, dd_col3 = st.columns(3)
+                    dd_col1.metric("Total Event Interactions", deep_dive_df['EventCount'].sum())
+                    
+                    # Extract first and last read dates safely
+                    try:
+                        first_read = pd.to_datetime(deep_dive_df['FirstOccurrence'].min()).strftime('%b %d, %Y')
+                        last_read = pd.to_datetime(deep_dive_df['LastOccurrence'].max()).strftime('%b %d, %Y')
+                    except Exception:
+                        first_read, last_read = "Unknown", "Unknown"
+                        
+                    dd_col2.metric("Date First Opened", first_read)
+                    dd_col3.metric("Date Last Read", last_read)
             except Exception as e:
                 st.error(f"Error reading the database: {e}")
             finally:
