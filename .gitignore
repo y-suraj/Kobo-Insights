@@ -1,4 +1,5 @@
 venv/ 
 *.sqlite 
 __pycache__/ 
-shortcurspath_history.json 
+shortcurs
+path_history.json 
