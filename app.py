@@ -1,3 +1,5 @@
+import datetime
+import calendar
 import plotly.express as px
 import tkinter as tk
 from tkinter import filedialog
@@ -91,7 +93,79 @@ if st.session_state.folder_path:
                 kpi1.metric(label="Books Started", value=books_started)
                 kpi2.metric(label="Books Finished", value=books_finished)
                 kpi3.metric(label="Total Hours Read", value=f"{total_hours:.1f} hrs")
+                # --- READING STREAKS & CALENDAR ---
+                st.divider()
+                st.subheader("Reading Streaks & Calendar")
                 
+                # 1. Sweep the database for every available timestamp to reconstruct active days
+                try:
+                    # AnalyticsEvents holds detailed telemetry if the device hasn't purged it
+                    dates_df = pd.read_sql_query("SELECT Timestamp FROM AnalyticsEvents", conn)
+                    all_dates = pd.to_datetime(dates_df['Timestamp']).dt.date.dropna().tolist()
+                except Exception:
+                    all_dates = []
+                
+                # Add First/Last occurrence from the Event table as a fallback
+                all_dates.extend(pd.to_datetime(df['FirstOccurrence']).dt.date.dropna().tolist())
+                all_dates.extend(pd.to_datetime(df['LastOccurrence']).dt.date.dropna().tolist())
+                
+                # Deduplicate and sort the dates
+                active_days = sorted(list(set(all_dates)))
+                
+                if active_days:
+                    # Calculate longest all-time streak
+                    longest_streak = 0
+                    current_count = 1
+                    for i in range(1, len(active_days)):
+                        if (active_days[i] - active_days[i-1]).days == 1:
+                            current_count += 1
+                        else:
+                            longest_streak = max(longest_streak, current_count)
+                            current_count = 1
+                    longest_streak = max(longest_streak, current_count)
+                    
+                    # Calculate current streak (counting backwards from your most recent active day)
+                    current_streak = 1
+                    for i in range(len(active_days)-2, -1, -1):
+                        if (active_days[i+1] - active_days[i]).days == 1:
+                            current_streak += 1
+                        else:
+                            break
+                            
+                    latest_date = active_days[-1]
+                else:
+                    longest_streak, current_streak = 0, 0
+                    latest_date = datetime.date.today()
+                    
+                # 2. Display the Streak KPIs
+                streak_col1, streak_col2 = st.columns(2)
+                streak_col1.metric(label="Current Active Streak", value=f"{current_streak} Days")
+                streak_col2.metric(label="All-Time Longest Streak", value=f"{longest_streak} Days")
+                
+                st.write("") # Spacing
+                
+                # 3. Generate the Fire Emoji Calendar for the most recent active month
+                st.markdown(f"**Activity for {latest_date.strftime('%B %Y')}**")
+                cal = calendar.Calendar(firstweekday=0) # Monday start
+                month_cal = cal.monthdatescalendar(latest_date.year, latest_date.month)
+                
+                # Build a Markdown table row by row
+                md = "| Mon | Tue | Wed | Thu | Fri | Sat | Sun |\n|---|---|---|---|---|---|---|\n"
+                for week in month_cal:
+                    row = "|"
+                    for day in week:
+                        if day.month == latest_date.month:
+                            if day in active_days:
+                                # Highlight reading days with the requested fire emoji
+                                row += f" **{day.day}** 🔥 |"
+                            else:
+                                row += f" {day.day} |"
+                        else:
+                            row += " |" # Empty cell for days outside the current month
+                    md += row + "\n"
+                
+                # Render the markdown table in the UI
+                st.markdown(md)
                 st.divider()
                 st.subheader("Book Summary")
                 
