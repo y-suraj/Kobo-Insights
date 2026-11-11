@@ -144,16 +144,44 @@ if st.session_state.folder_path:
                 
                 st.write("") # Spacing
                 
-                # 3. Generate the Fire Emoji Calendar with a Month Selector
+                # 3. Generate the Fire Emoji Calendar with Arrow Navigation
                 if active_days:
                     # Extract all unique months from your activity history, sorted newest to oldest
                     unique_months = sorted(list(set([(d.year, d.month) for d in active_days])), reverse=True)
                     month_options = [datetime.date(y, m, 1).strftime('%B %Y') for y, m in unique_months]
                     
-                    # Create a dropdown to select the month
-                    selected_month_str = st.selectbox("Select Activity Month:", month_options, index=0)
-                    selected_date = datetime.datetime.strptime(selected_month_str, '%B %Y').date()
+                    # Initialize calendar index in session state (0 is the newest month)
+                    if "cal_month_idx" not in st.session_state:
+                        st.session_state.cal_month_idx = 0
+                        
+                    # Failsafe in case folder changes and fewer months exist
+                    if st.session_state.cal_month_idx >= len(month_options):
+                        st.session_state.cal_month_idx = 0
+                        
+                    # Create a 3-column layout for the arrows and the month label
+                    cal_col1, cal_col2, cal_col3 = st.columns([1, 3, 1])
                     
+                    with cal_col1:
+                        # Left arrow goes back in time (increases index in our newest-to-oldest list)
+                        # The button automatically disables if there is no older data
+                        if st.button("◀ Previous", use_container_width=True, disabled=(st.session_state.cal_month_idx >= len(month_options) - 1)):
+                            st.session_state.cal_month_idx += 1
+                            st.rerun()
+                            
+                    with cal_col2:
+                        # Display the currently selected month centered between the buttons
+                        selected_month_str = month_options[st.session_state.cal_month_idx]
+                        st.markdown(f"<div style='text-align: center; font-size: 18px; font-weight: bold; padding-top: 5px;'>{selected_month_str}</div>", unsafe_allow_html=True)
+                        
+                    with cal_col3:
+                        # Right arrow goes forward in time (decreases index)
+                        # Disables if we are already viewing the most recent month
+                        if st.button("Next ▶", use_container_width=True, disabled=(st.session_state.cal_month_idx <= 0)):
+                            st.session_state.cal_month_idx -= 1
+                            st.rerun()
+                    
+                    # Generate the calendar for the selected month
+                    selected_date = datetime.datetime.strptime(selected_month_str, '%B %Y').date()
                     cal = calendar.Calendar(firstweekday=0) # Monday start
                     month_cal = cal.monthdatescalendar(selected_date.year, selected_date.month)
                     
@@ -164,15 +192,14 @@ if st.session_state.folder_path:
                         for day in week:
                             if day.month == selected_date.month:
                                 if day in active_days:
-                                    # Highlight reading days with the requested fire emoji
                                     row += f" **{day.day}** 🔥 |"
                                 else:
                                     row += f" {day.day} |"
                             else:
-                                row += " |" # Empty cell for days outside the current month
+                                row += " |" # Empty cell
                         md += row + "\n"
                     
-                    # Render the markdown table in the UI
+                    # Render the markdown table
                     st.markdown(md)
                 else:
                     st.info("No reading activity found to generate a calendar.")
